@@ -5,9 +5,9 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const express = require('express');
 
 const app = express();
-const BOT_TOKEN =  '8206693893:AAGdbGIHN_bZEFEhwHPsTH57LbFmjujxh_Q';
-const GEMINI_API_KEY = 'AIzaSyDqy9AtMHN6I2bRvWBYQ1B-1T06gXjlwM0';
-const CHANNEL_ID = '@abcde_officia'; 
+const BOT_TOKEN =  process.env.BOT_TOKEN;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const CHANNEL_ID = '@shayari_aajkal'; 
 
 // --- SERVER FOR RENDER (Keep Alive) ---
 app.get('/', (req, res) => res.send('Bot is Alive! 🚀'));
@@ -109,4 +109,5 @@ cron.schedule('0 * * * *', () => {
 bot.launch().then(() => console.log("🚀 Bot launched with Gemini 2.5 Flash!"));
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
+
 process.once('SIGTERM', () => bot.stop('SIGTERM'));

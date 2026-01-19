@@ -1,114 +1,124 @@
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const cron = require('node-cron');
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const express = require('express');
 
-const app = express();
-const BOT_TOKEN =  process.env.BOT_TOKEN;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// --- CONFIGURATION ---
+const BOT_TOKEN = process.env.BOT_TOKEN ; 
+const apiKey = process.env.apiKey ; 
 const CHANNEL_ID = '@shayari_aajkal'; 
 
-// --- SERVER FOR RENDER (Keep Alive) ---
-app.get('/', (req, res) => res.send('Bot is Alive! 🚀'));
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
 const bot = new Telegraf(BOT_TOKEN);
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const app = express();
 
 const poets = ["Mirza Ghalib", "Faiz Ahmed Faiz", "Allama Iqbal", "Gulzar", "Jaun Elia"];
 let poetIndex = 0;
 
-// --- AI LOGIC WITH NEW MODEL ---
-async function getAIContent(poetName) {
-    try {
-        // Naya Model Version jo aapne bataya
-        const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash" 
-        });
+// --- SERVER FOR RENDER ---
+app.get('/', (req, res) => res.send('Shayari Bot (Gemini 2.5) is Alive! ✍️'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
 
-        const prompt = `Write a unique and famous shayari by ${poetName} in Hindi (Devanagari), ranging from 2 to 6 lines. Ensure the shayari is different from common ones and avoid repetition. Also, provide a brief 1-sentence meaning in Hinglish.
+// --- AI LOGIC (Gemini 2.5 Flash Preview) ---
+async function getAIShayari(poetName) {
+  // Aapka bataya hua specific URL
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+  
+  const userPrompt = `Write a unique and famous shayari by ${poetName} in Hindi (Devanagari). 
+                      Also provide a 1-line meaning in Hinglish.`;
 
-Note: Do not include any introductory text, strictly follow the format.
-
-Format: (Shayari here)
-
-Meaning: (Meaning here)`;
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        return response.text();
-    } catch (error) {
-        console.error("❌ Gemini API Error:", error.message);
-        return null;
+  const payload = {
+    contents: [{
+      parts: [{ text: userPrompt }]
+    }],
+    systemInstruction: {
+      parts: [{ text: `
+        You are a shayari expert. 
+        Format:
+        (Shayari here)
+        
+        Meaning: (Brief 1-sentence meaning in Hinglish)
+        
+        STRICT RULES:
+        1. No intro text (like "Sure, here is...").
+        2. No emojis.
+        3. No markdown backticks.
+      ` }]
     }
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error("Gemini 2.5 API Error Detail:", JSON.stringify(result));
+      return null;
+    }
+
+    // Text extract logic
+    return result.candidates?.[0]?.content?.parts?.[0]?.text || null;
+
+  } catch (error) {
+    console.error("Fetch Error:", error.message);
+    return null;
+  }
 }
 
 // --- POSTING LOGIC ---
-async function postToChannel(customPoet = null) {
-    const currentPoet = customPoet || poets[poetIndex];
-    console.log(`⏳ Generating Shayari for: ${currentPoet}`);
+async function postShayariToChannel(customPoet = null) {
+  const currentPoet = customPoet || poets[poetIndex];
+  console.log(`⏳ Fetching shayari for: ${currentPoet}`);
 
-    const content = await getAIContent(currentPoet);
-
-    if (content) {
-        const finalPost = `✨ *${currentPoet}* ✨\n\n${content}\n\n📌 #Shayari #Poetry`;
-        try {
-            await bot.telegram.sendMessage(CHANNEL_ID, finalPost, { parse_mode: 'Markdown' });
-            if (!customPoet) {
-                poetIndex = (poetIndex + 1) % poets.length;
-            }
-            return true;
-        } catch (err) {
-            console.error("❌ Telegram Send Error:", err.message);
-            return false;
-        }
+  try {
+    const shayari = await getAIShayari(currentPoet);
+    
+    if (shayari) {
+      const finalPost = `✨ *${currentPoet}* ✨\n\n${shayari}\n\n📌 #Shayari #Poetry`;
+      
+      await bot.telegram.sendMessage(CHANNEL_ID, finalPost, { parse_mode: 'Markdown' });
+      
+      if (!customPoet) {
+        poetIndex = (poetIndex + 1) % poets.length;
+      }
+      return true;
     }
-    return false;
+  } catch (error) {
+    console.error("Post Error:", error.message);
+  }
+  return false;
 }
 
-// --- COMMANDS & INPUT LISTENER ---
-
-bot.start((ctx) => {
-    ctx.reply("Namaste! Bot active hai. \n\n🔹 Auto-post: Har 1 ghante mein.\n🔹 Manual: Likhiye 'post shayari [Poet Name]'");
-});
+// --- COMMANDS ---
+bot.start((ctx) => ctx.reply("Shayari Bot Active! 'post shayari [Name]' likhein."));
 
 bot.on('text', async (ctx) => {
-    const msg = ctx.message.text.toLowerCase();
+  const text = ctx.message.text.toLowerCase();
+  
+  if (text.startsWith('post shayari')) {
+    const inputPoet = ctx.message.text.split(' ').slice(2).join(' ').trim();
+    if (!inputPoet) return ctx.reply("Kripya poet ka naam likhein!");
 
-    // "post shayari" check
-    if (msg.startsWith('post shayari')) {
-        const inputPoet = ctx.message.text.replace(/post shayari/i, '').trim();
-        
-        if (!inputPoet) {
-            return ctx.reply("Kripya poet ka naam likhein. Example: post shayari Gulzar");
-        }
-
-        await ctx.reply(`🔍 Gemini 2.5 Flash se ${inputPoet} ki shayari nikaal raha hoon...`);
-        const success = await postToChannel(inputPoet);
-        
-        if (success) {
-            ctx.reply("✅ Channel par post kar diya gaya hai!");
-        } else {
-            ctx.reply("❌ Maafi, shayari post nahi ho payi. Logs check karein.");
-        }
-    }
+    await ctx.reply(`🔍 Gemini 2.5 se ${inputPoet} ki shayari dhund raha hoon...`);
+    const success = await postShayariToChannel(inputPoet);
+    
+    if (success) ctx.reply("✅ Channel par post ho gayi!");
+    else ctx.reply("❌ Error: API ne response nahi diya.");
+  }
 });
 
-// --- AUTOMATIC SCHEDULE (India Time) ---
+// --- CRON JOB ---
 cron.schedule('0 * * * *', () => {
-    postToChannel();
-}, { 
-    scheduled: true,
-    timezone: "Asia/Kolkata" 
-});
+  console.log("Auto-posting shayari...");
+  postShayariToChannel();
+}, { timezone: "Asia/Kolkata" });
 
-// --- LAUNCH ---
-bot.launch().then(() => console.log("🚀 Bot launched with Gemini 2.5 Flash!"));
+bot.launch().then(() => console.log("🚀 Shayari Bot (Gemini 2.5) Launched!"));
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
-
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
-
-

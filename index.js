@@ -22,7 +22,7 @@ app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
 // --- AI LOGIC (Gemini 2.5 Flash Preview) ---
 async function getAIShayari(poetName) {
   // Aapka bataya hua specific URL
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+ const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
   
   const userPrompt = `Write a unique and famous shayari by ${poetName} in Hindi (Devanagari). 
                       Also provide a 1-line meaning in Hinglish.`;
@@ -122,3 +122,4 @@ bot.launch().then(() => console.log("🚀 Shayari Bot (Gemini 2.5) Launched!"));
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+

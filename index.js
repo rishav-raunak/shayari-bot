@@ -25,7 +25,7 @@ async function getAIContent(poetName) {
     try {
         // Naya Model Version jo aapne bataya
         const model = genAI.getGenerativeModel({ 
-            model: "gemini-2.5-flash-preview-09-2025" 
+            model: "gemini-1.5-flash" 
         });
 
         const prompt = `Write a unique and famous shayari by ${poetName} in Hindi (Devanagari), ranging from 2 to 6 lines. Ensure the shayari is different from common ones and avoid repetition. Also, provide a brief 1-sentence meaning in Hinglish.
@@ -110,4 +110,5 @@ bot.launch().then(() => console.log("🚀 Bot launched with Gemini 2.5 Flash!"))
 process.once('SIGINT', () => bot.stop('SIGINT'));
 
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+
 

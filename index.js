@@ -28,14 +28,13 @@ async function getAIContent(poetName) {
             model: "gemini-2.5-flash-preview-09-2025" 
         });
 
-        const prompt = `Write a famous 2-line shayari by ${poetName} in Hindi (Devanagari). 
-        Also, provide a brief 1-sentence meaning in Hinglish. 
-        Note: Do not include any introductory text, strictly follow the format.
-        
-        Format:
-        (Shayari here)
-        
-        Meaning: (Meaning here)`;
+        const prompt = `Write a unique and famous shayari by ${poetName} in Hindi (Devanagari), ranging from 2 to 6 lines. Ensure the shayari is different from common ones and avoid repetition. Also, provide a brief 1-sentence meaning in Hinglish.
+
+Note: Do not include any introductory text, strictly follow the format.
+
+Format: (Shayari here)
+
+Meaning: (Meaning here)`;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
@@ -111,3 +110,4 @@ bot.launch().then(() => console.log("🚀 Bot launched with Gemini 2.5 Flash!"))
 process.once('SIGINT', () => bot.stop('SIGINT'));
 
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+

@@ -112,14 +112,32 @@ bot.on('text', async (ctx) => {
   }
 });
 
-// --- CRON JOB ---
-cron.schedule('0 * * * *', () => {
-  console.log("Auto-posting shayari...");
+// --- AUTOMATIC SCHEDULE (FIXED TIMES) ---
+// Yeh schedule subah 5 AM se lekar raat 10 PM tak har ghante post karega.
+// Isme 1am, 2am, 3am, 4am, 11pm aur 12pm (noon) excluded hain.
+
+// 1. Subah 5 AM se 11 AM tak (Every Hour)
+cron.schedule('0 5-11 * * *', () => {
+  console.log("Morning schedule post ho raha hai...");
   postShayariToChannel();
-}, { timezone: "Asia/Kolkata" });
+}, { 
+  scheduled: true, 
+  timezone: "Asia/Kolkata" 
+});
+
+// 2. Dopahar 1 PM se Raat 10 PM tak (Every Hour)
+// Isme 12 PM (noon) skip ho jayega aur 1 PM se start hoga.
+cron.schedule('0 13-22 * * *', () => {
+  console.log("Evening schedule post ho raha hai...");
+  postShayariToChannel();
+}, { 
+  scheduled: true, 
+  timezone: "Asia/Kolkata" 
+});
 
 bot.launch().then(() => console.log("🚀 Shayari Bot (Gemini 2.5) Launched!"));
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+
 
